@@ -120,3 +120,22 @@ PettingZoo generally recommends listing independent research environments
 in the **third-party environments directory** rather than merging them into
 the core library. Only propose that PR once compatibility and reproducibility
 tests pass.
+
+## Additional correctness constraints
+
+- **No future latency disclosure:** the last observed end-to-end latency is
+  updated only after a task is delivered. In-flight service samples are
+  simulator-internal and never exposed in observations or CTDE state().
+- **Time-limit bootstrap:** the SMDP DQN replay buffer distinguishes actual
+  termination from PettingZoo time-limit truncation. Truncated trajectories
+  keep the target-value bootstrap; rewards still include the complete
+  accumulated AoI cost up to the horizon.
+- **Exact integrated cost:** the environment exposes the *undiscounted*
+  real-time AoI integral. The demonstration agent uses elapsed-time discount
+  for future value. This is a practical episodic baseline, not an exact
+  continuous-time discounted-reward solver: an exact discounted objective
+  would also discount the reward rate inside each holding interval.
+- **No legacy equivalence claim:** the original simulator's AoI averaging,
+  task initialization and fractional reward conventions differ. Paper metric
+  reproduction requires matching the legacy task process and comparing
+  identical scripted trajectories and random samples.

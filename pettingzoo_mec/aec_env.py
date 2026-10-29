@@ -31,7 +31,7 @@ class MECConfig:
         if self.n_iot < 1 or self.n_edge < 1:
             raise ValueError("n_iot and n_edge must be positive")
         if any(
-            x <= 0
+            (not np.isfinite(x)) or x <= 0
             for x in (
                 self.max_time, self.task_size, self.computation_density,
                 self.local_capacity, self.edge_capacity, self.wait_max,
@@ -201,6 +201,9 @@ class AgeMinimalMECEnv(AECEnv):
             if kind == "complete":
                 # Completed updates reset AoI to their end-to-end service age.
                 self._last_delivered_generation[i] = generation_time
+                # The realized end-to-end latency is only known at delivery.
+                # Publishing it during dispatch leaks future samples via state().
+                self._last_latency[i] = self._time - generation_time
                 self._schedule(self._time, "wait", i)
                 continue
 
@@ -254,7 +257,6 @@ class AgeMinimalMECEnv(AECEnv):
 
             duration = max(1e-7, float(self._rng.exponential(mean_duration)))
             finish = start + duration
-            self._last_latency[i] = finish - self._time
             if offload:
                 self._edge_available_until[edge] = finish
                 self._edge_completions[edge].append(finish)

@@ -32,7 +32,7 @@ class TimedTransition:
     action: int
     reward: float
     next_state: np.ndarray
-    done: bool
+    done: bool  # True for genuine termination; time-limit truncation bootstraps.
     elapsed: float
 
 

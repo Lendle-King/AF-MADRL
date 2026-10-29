@@ -59,7 +59,7 @@ def run_training(
                     replay.add(
                         TimedTransition(
                             old_obs, old_action, accrued[agent],
-                            observation.copy(), True, simulation.time - old_time,
+                            observation.copy(), bool(terminated), simulation.time - old_time,
                         )
                     )
                 simulation.step(None)
@@ -86,7 +86,7 @@ def run_training(
             if len(replay) >= batch_size:
                 losses.append(learner.learn(replay.sample(batch_size)))
 
-        assert not pending, "terminal offload transitions were not flushed"
+        assert not pending, "offload transitions were not flushed at the episode boundary"
         results.append(simulation.mean_aoi)
         loss_text = f"{np.mean(losses):.5f}" if losses else "n/a"
         print(
