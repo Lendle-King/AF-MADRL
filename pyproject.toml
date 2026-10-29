@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "af-madrl-pettingzoo"
+version = "0.1.0"
+description = "Event-driven age-minimal MEC benchmark for PettingZoo"
+readme = "PETTINGZOO.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+dependencies = [
+    "numpy>=1.24,<3",
+    "gymnasium>=1.0,<2",
+    "pettingzoo>=1.27,<2",
+]
+
+[project.optional-dependencies]
+train = ["torch>=2.1,<3"]
+test = ["pytest>=8,<10"]
+
+[tool.setuptools.packages.find]
+include = ["pettingzoo_mec*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
