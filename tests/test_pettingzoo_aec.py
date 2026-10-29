@@ -96,6 +96,12 @@ def test_edge_fcfs_queue() -> None:
     assert simulation.agent_selection == "iot_1"
     simulation.step(action)
     assert simulation._edge_available_until[0] > first_available
+    # Device 1 remains in flight; its realized latency must not leak yet.
+    assert simulation._last_latency[0] == pytest.approx(first_available)
+    assert simulation._last_latency[1] == 0.0
+    simulation.step({"offload": 0, "wait": np.asarray([3.0], dtype=np.float32)})
+    # Device 1 has now completed after waiting in device 0's edge queue.
+    assert simulation.agent_selection == "iot_1"
     assert simulation._last_latency[1] >= first_available
     simulation.close()
 
