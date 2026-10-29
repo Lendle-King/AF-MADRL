@@ -139,3 +139,27 @@ tests pass.
   task initialization and fractional reward conventions differ. Paper metric
   reproduction requires matching the legacy task process and comparing
   identical scripted trajectories and random samples.
+
+## Legacy / AEC numerical alignment
+
+A deterministic side-by-side regression test, tests/test_legacy_alignment.py,
+runs the **actual legacy Offload class** and the AEC environment with identical
+two-device, one-edge FCFS service durations of 2 and 1 time units.
+
+- The first and second completion times are 2 and 3 in **both** environments,
+  and their edge queue occupancies agree at these completion events.
+- The legacy implementation initializes tasks automatically on reset and
+  uses a queue-delay surrogate. The AEC environment starts with explicit
+  per-agent offloading decisions and schedules service at its true FCFS start.
+- Their reported AoI quantities do **not** agree at startup: legacy accumulates
+  completed-update trapezoid terms, whereas the AEC benchmark continuously
+  integrates age from t=0. For that scripted trajectory, the legacy aoi_average
+  remains zero through the first update for each device, while AEC mean_aoi at
+  t=3 equals 1.5. This is a **definition/initialization mismatch**, not evidence
+  of identical paper benchmark behavior.
+- Legacy fractional rewards also depend on the Dinkelbach gamma term and
+  cannot be compared directly to the AEC's time-integral rewards.
+
+Do not report results from the two systems as interchangeable. Matching the
+paper needs an explicit mapping for warmup/boundary conditions, wait actions,
+channels, reward convention and the original update schedule.
