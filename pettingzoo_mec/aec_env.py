@@ -79,7 +79,7 @@ class AgeMinimalMECEnv(AECEnv):
         self.possible_agents = [f"iot_{i}" for i in range(self.config.n_iot)]
         self._names = {a: i for i, a in enumerate(self.possible_agents)}
         self._observation_spaces = {
-            a: spaces.Box(low=0, high=np.inf, shape=(self.config.n_edge + 5,), dtype=np.float32)
+            a: spaces.Box(low=0, high=np.finfo(np.float32).max, shape=(self.config.n_edge + 5,), dtype=np.float32)
             for a in self.possible_agents
         }
         self._action_spaces = {
