@@ -51,5 +51,6 @@ jobs:
       - name: Install CPU-only PyTorch
         run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
       - run: python -m pip install -e ".[train,test]"
-      - run: python -m pytest -q tests/test_offloading_agent.py
+      - name: Run the full benchmark regression suite
+        run: python -m pytest -q
       - run: python examples/train_aec.py --episodes 2 --horizon 3 --batch-size 4
