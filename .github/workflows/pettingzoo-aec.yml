@@ -11,6 +11,7 @@ on:
       - "tests/**"
       - "pyproject.toml"
       - "PETTINGZOO.md"
+      - "README.md"
       - ".github/workflows/pettingzoo-aec.yml"
   workflow_dispatch:
 
@@ -27,10 +28,17 @@ jobs:
         with:
           python-version: "${{ matrix.python-version }}"
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e ".[test]" "scipy>=1.11,<2"
+      - run: python -m pip install -e ".[test]"
       - run: python -m compileall -q pettingzoo_mec examples tests
       - run: python -m pytest -q tests/test_pettingzoo_aec.py tests/test_event_dynamics.py tests/test_legacy_alignment.py
       - run: python examples/rollout_aec.py
+      - name: Verify wheel and source distribution
+        if: matrix.python-version == '3.11'
+        run: |
+          python -m pip install build
+          python -m build --sdist --wheel --outdir dist
+          python -m pip install --force-reinstall dist/*.whl
+          python -c "from pettingzoo_mec import MECConfig, env; e=env(config=MECConfig(n_iot=2,n_edge=1)); e.reset(seed=7); assert e.agents; e.close()"
 
   cpu-learning:
     runs-on: ubuntu-latest

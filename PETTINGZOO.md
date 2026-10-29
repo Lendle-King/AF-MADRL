@@ -108,7 +108,8 @@ simulation = make("aec", "af-madrl/age-minimal-mec-v0")
 ## Verification and upstreaming
 
 ~~~bash
-python -m pytest -q tests/test_pettingzoo_aec.py
+python -m pytest -q  # install .[train,test] first
+python -m pytest -q tests/test_pettingzoo_aec.py tests/test_event_dynamics.py tests/test_legacy_alignment.py
 python -m pytest -q tests/test_offloading_agent.py
 ~~~
 
@@ -163,3 +164,16 @@ two-device, one-edge FCFS service durations of 2 and 1 time units.
 Do not report results from the two systems as interchangeable. Matching the
 paper needs an explicit mapping for warmup/boundary conditions, wait actions,
 channels, reward convention and the original update schedule.
+
+## Distribution smoke test
+
+The GitHub Actions matrix covers Python 3.11 and 3.12, and on Python 3.11
+builds both source and wheel distributions with `python -m build`, installs
+the generated wheel, and instantiates the AEC environment. The `test` extra
+includes SciPy solely for the legacy parity test; the normal environment
+has no SciPy or PyTorch runtime dependency.
+
+For upstream third-party listing, first ask the PettingZoo maintainers on
+their linked Discord as requested in their documentation. The proposed
+listing should reference only the **independent AEC benchmark**, not claim
+that the legacy fractional-RL paper has been reproduced.
