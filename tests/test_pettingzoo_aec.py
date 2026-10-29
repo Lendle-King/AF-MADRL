@@ -98,3 +98,19 @@ def test_edge_fcfs_queue() -> None:
     assert simulation._edge_available_until[0] > first_available
     assert simulation._last_latency[1] >= first_available
     simulation.close()
+
+
+def test_pettingzoo_v127_registry() -> None:
+    """The 1.27+ register/make path should work for an external environment."""
+    from pettingzoo import make
+    from pettingzoo_mec import register_env
+
+    register_env("af-madrl/age-minimal-mec-v0")
+    simulation = make(
+        "aec", "af-madrl/age-minimal-mec-v0",
+        config=MECConfig(n_iot=2, n_edge=1, max_time=3.0),
+    )
+    simulation.reset(seed=24)
+    assert simulation.agents == ["iot_0", "iot_1"]
+    assert simulation.action_space("iot_0").contains(simulation.action_space("iot_0").sample())
+    simulation.close()
