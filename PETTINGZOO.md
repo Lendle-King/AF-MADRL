@@ -1,0 +1,122 @@
+# AF-MADRL: PettingZoo AEC benchmark (experimental branch)
+
+This branch adds an **independent PettingZoo-compatible benchmark** based on
+the asynchronous AoI/minimum-age mobile edge-computing setting of AF-MADRL.
+
+**Important scientific boundary:** the original paper code (the files
+mec_env_test.py, MA_DQN.py, RNN_PPO.py and main_MA_DQN_PPO.py) remains
+untouched. The new benchmark captures core event-driven, edge-FCFS and AoI
+features but **does not reproduce the paper's complete channel model,
+fractional Dinkelbach update, initial task distribution or original GRU-PPO
+schedule**. Do not claim reproduction of the paper's performance metrics
+without a separate equivalence study.
+
+## Install
+
+Python 3.11 or 3.12:
+
+~~~bash
+python -m pip install -e ".[test]"
+python -m pytest -q tests/test_pettingzoo_aec.py
+python examples/rollout_aec.py
+~~~
+
+Training requires PyTorch (CPU is fine):
+
+~~~bash
+python -m pip install -e ".[train,test]"
+python -m pytest -q
+python examples/train_aec.py --episodes 5 --horizon 20 --seed 42
+~~~
+
+The root requirements.txt targets the historical paper implementation and
+is deliberately not used by this new package.
+
+## Environment API
+
+~~~python
+import numpy as np
+from pettingzoo_mec import env, MECConfig
+
+simulation = env(config=MECConfig(n_iot=4, n_edge=2, max_time=20))
+simulation.reset(seed=42)
+for agent in simulation.agent_iter():
+    obs, reward, terminated, truncated, info = simulation.last()
+    if terminated or truncated:
+        action = None
+    else:
+        action = simulation.action_space(agent).sample()
+        if info["phase"] == "wait":
+            action["wait"] = np.array([1.0], dtype=np.float32)
+    simulation.step(action)
+print(simulation.mean_aoi)
+simulation.close()
+~~~
+
+- The selected agent is the IoT device whose **next event** occurs first.
+- Action is a fixed Gymnasium Dict with two fields:
+  - offload: Discrete(n_edge + 1); 0=local, 1..n_edge=edge index.
+  - wait: Box([0], [wait_max]); seconds until the next generated task.
+  - Only the field matching info["phase"] is used. Keeping the same action
+    space throughout the episode is intentional.
+- Each agent's observation is a float32 vector:
+  [edge_queue_lengths..., own_AoI, remaining_time, is_wait_phase,
+   last_end_to_end_latency, current_time].
+- Offloading creates a task whose processing duration is exponential with
+  mean task_size * computation_density / processor_capacity. Every edge
+  executes tasks FCFS. At completion the device chooses a waiting duration.
+- Decision times are irregular. Each agent's reward is minus the **integral
+  of AoI over real time** divided by reward_scale. PettingZoo AEC cumulative
+  rewards aggregate between an agent's turns. mean_aoi is the time-average
+  AoI across IoT devices.
+- Reaching max_time sets truncations for all agents, followed by final
+  step(None) calls to retire them properly.
+- state() provides global observations for CTDE algorithms.
+- Seeding uses a per-instance NumPy generator and seeded action spaces.
+
+## Reference offloading learner
+
+pettingzoo_mec/agents.py provides a small **Dueling Double DQN** baseline,
+not a GRU-PPO reproduction. It addresses pitfalls found in static review:
+
+1. Epsilon-greedy samples from all n_edge + 1 actions.
+2. Both dueling value and advantage branches consume the learned features.
+3. Bootstrapping is multiplied by (1 - done), not done.
+4. Online network selects and target network evaluates the next action.
+5. SMDP offloading transitions aggregate rewards until the same IoT's next
+   offloading decision, including the intervening waiting phase.
+6. Irregular-time discount is discount_factor ** (elapsed / reference_time);
+   the Dinkelbach parameter used by the paper is a different variable.
+7. Reproducible initialization, gradient clipping and periodic target sync.
+
+The waiting subpolicy is **fixed**, not learned. This separates offloading
+learning from continuous-action policy research until the environment is
+tested.
+
+## PettingZoo 1.27 registry
+
+The new PettingZoo registry can be used after explicit registration:
+
+~~~python
+from pettingzoo import make
+from pettingzoo_mec import register_env
+
+register_env()
+simulation = make("aec", "af-madrl/age-minimal-mec-v0")
+~~~
+
+## Verification and upstreaming
+
+~~~bash
+python -m pytest -q tests/test_pettingzoo_aec.py
+python -m pytest -q tests/test_offloading_agent.py
+~~~
+
+The tests cover the official api_test, seed_test, seed reproducibility,
+spaces, FCFS queue ordering, AoI integration, truncation, variable-time
+discount, and CPU training smoke test.
+
+PettingZoo generally recommends listing independent research environments
+in the **third-party environments directory** rather than merging them into
+the core library. Only propose that PR once compatibility and reproducibility
+tests pass.
